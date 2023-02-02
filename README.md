@@ -313,4 +313,263 @@ Since the dataset is limited, we had some limitations while analyzing the data :
 
 
 
+# <center>Statistical Computing Final Project</center>
+
+### <center>Vishal Singh | Rohit Bhoite | Junaid Shareef | Saurav Nandi</center>
+
+<center><img src ="https://user-images.githubusercontent.com/112138890/205417637-65b5fe67-0afd-423a-89d0-62635abfc882.jpeg" width = "300" > </center>
+
+## <ins>Introduction</ins>:
+
+Our research aims to assess and increase the total sales and discounts of meat products like beef, Turkey, chicken, pork and frozen meat/ meat dinners as per age group by comparing the sales per month.
+
+Our analysis can be used to answer questions like:
+
+1)  *How can we optimize sales revenue spent on discounting for the selected meat products like beef, Turkey, chicken, pork and frozen meat/ meat dinners?* <br>
+2)  *How should Regork better optimize their discounts based on the seasonal preference of Consumers?*
+
+### <ins>Packages Required</ins>:
+
+* *completejourney_py*: Used to prepare and analyze the data
+* _Pandas:_ Used to form dataframes and perform analysis
+* _Numpy:_ Used to form arrays, lists
+* _Matplotlib:_ Used to plot graphs and provide in-depth analysis and visualizations on the business problem
+
+### <ins>Data Preparation</ins>:
+
+This sections contains all the procedures followed in getting the data analysis ready. Each step has been explained with the relevant code.
+
+##### Data Import
+
+We are using the Complete Journey package for performing the analysis. The *transactions* datasets represents grocery store shopping transactions over one year from a group of 2,469 households. The *products* dataset contains product related information like department, product category, product type and brand. The *demographics* dataset contains information related to different age groups belonging to different households buying these meat products which is present in the product_categories column of products table
+
+**Packages Import Code:**
+
+```{r, message=FALSE, fig.width=18, fig.height=10}
+ import pandas as pd
+ from completejourney_py import get_data
+ import numpy as np
+ import matplotlib.pyplot as plt
+ import matplotlib.ticker as mtick
+```
+Below are the datasets used from CompleteJourney
+```{r, message=FALSE, fig.width=18, fig.height=10}
+ cj_data = get_data()
+ demographics = cj_data['demographics']
+ demographics.head(5)
+
+ products = cj_data['products']
+ products.head(5)
+
+ transactions = cj_data['transactions']
+ transactions.head(5)
+```
+**Data Description:**
+
+### <ins>Transactions</ins>:
+
+household_id -> Unique ID for each household<br>
+store_id -> Uniquely identifies each store<br>
+basket_id -> Uniquely identifies each purchase occasion<br>
+product_id -> Uniquely identifies each product<br>
+quantity -> Number of the product purchased during the visit<br>
+retail_disc -> Discount applied due to the retailer’s loyalty card program<br>
+coupon_disc -> Discount applied due to a manufacturer coupon<br>
+coupon_match_disc -> Discount applied due to retailer’s match of manufacturer coupon<br>
+week -> Week of the transaction; Ranges 1-53<br>
+transaction_timestamp -> Date and time of day when the transaction occurred<br>
+
+### <ins>Products</ins>:
+
+product_id -> Uniquely identifies each product<br>
+manufacturer_id -> Uniquely identifies each manufacturer<br>
+department -> Groups similar products together<br>
+brand -> Indicates private or national label brand<br>
+product_category -> Groups similar products together at lower level<br>
+product_type -> Groups similar products together at lowest level<br>
+package_size -> Indicates package size (not available for all products)<br>
+
+### <ins>Demographics</ins>:
+
+household_id -> Unique ID for each household<br>
+age -> Age Range of buyers<br>
+income -> Income range of buyers<br>
+home_ownership -> Rental/Owner of House<br>
+marital_status -> Marital Status of buyers<br>
+household_size -> Number of members in buyers house<br>
+household_comp -> Demographic description of members of the house<br>
+kids_count -> Number of kids in buyers house<br>
+
+### <ins>Exploratory Data Analysis</ins>:
+
+In this section, we have summed the retail, coupon and coupon match discount. We have also extracted month from the transaction timestamp as it will be useful for plotting graphs for  further analysis.
+```{r, message=FALSE, fig.width=18, fig.height=10}
+discount_amount =(
+ transactions['retail_disc'] + transactions['coupon_disc']  + transactions['coupon_match_disc']
+)
+transactions['discount_amount'] = discount_amount
+transactions['month'] =pd.DatetimeIndex(transactions['transaction_timestamp']).month
+transactions.head(5)
+```
+In order to perform analysis for our business problem, we have created a sample data that comprises of product categories where we have mainly focused on meat department of Regork such as Beef, Frozen meat/meat dinners, Chicken, Pork and Turkey. We created this sample data by first merging the transactions dataframe with the products dataframe and then the demographics dataframe: 
+```{r, message=FALSE, fig.width=18, fig.height=10}
+df = transactions.merge(products, how = 'inner', on='product_id')
+
+df1 = df.merge(demographics, how = 'inner', on='household_id')
+df1.head(5)
+```
+Here we have the sample data to extract selected meat products to further analyze and explore the bottlenecks that hinder sales.
+```{r, message=FALSE, fig.width=18, fig.height=10}
+sample_data = (
+(df1['product_category'] == 'BEEF') |
+(df1['product_category'] == 'PORK') |
+(df1['product_category'] == 'CHICKEN') |
+(df1['product_category'] == 'FRZN MEAT/MEAT DINNERS') |
+(df1['product_category'] == 'TURKEY')
+)
+
+chart1_data =  df1[sample_data]
+chart1_data.head(5)
+```
+We have aggregated the sales value per meat product and represented it on a Pie-Chart to show the total sales percentages per product.
+```{r, message=FALSE, fig.width=18, fig.height=10}
+chart1 = ( 
+chart1_data.groupby('product_category')
+           .agg({'sales_value':'sum'})
+           .sort_values(by = 'sales_value' , ascending = False)
+)    
+chart1
+
+chart1.plot(kind = 'pie', subplots = True, ylabel = 'Percent Sales', autopct = '%1.0f%%',figsize = (10,12))
+plt.title('Percent sales by select Meat Products')
+plt.legend(loc = 'upper right')
+plt.show()
+```
+**As we can infer from the pie chart, *Beef* has the most percentage of sales (45 0/0), followed by frzn meat/Frzn dinners(25%), and then Chicken(14%) , Pork (13%) and Turkey(3%) in the end.**
+
+### <ins>ANALYSIS-1</ins>:
+
+After finding out the total_sales of different selected meat categories, we have grouped the chart1_data by age and product_category in order to find its total sales value and discount_amount and store the result in chart2_data dataframe.
+```{r, message=FALSE, fig.width=18, fig.height=10}
+Chart2_data = (
+chart1_data.groupby(['product_category','age'], as_index = False)
+           .agg({'sales_value':'sum','discount_amount':'sum'})
+           .sort_values(by = 'sales_value', ascending = False)
+)    
+Chart2_data.head(5)
+
+sales_per_age = Chart2_data.drop('discount_amount' , axis='columns')
+
+We pivot the data inorder to plot sales value of selected meat products against age groups.
+
+sales_per_age.pivot(index='age', columns='product_category', values='sales_value')
+
+tick_format = mtick.StrMethodFormatter('${x:,.0f}')
+
+(
+sales_per_age.pivot(index='age', columns='product_category', values='sales_value')
+             .plot(kind = 'bar', figsize = (12,6) ) 
+             .yaxis.set_major_formatter(tick_format)
+)    
+plt.xlabel('Age Group')
+plt.ylabel('Total Sales')
+plt.title('Sales by Age Group')
+plt.legend(loc = 'upper right')
+plt.xticks(rotation=0)
+plt.show()
+```
+**As per the graph, we can observe that <ins>Beef</ins> is the most preffered meat across all age groups followed by frozen meat and chicken. The age group <ins>45-54</ins> contributes for the maximum sales for  the selected meat products.
+Similarly, age group <ins>19-24</ins> are the lowest contributors to the overall sale. It can also be observed that all age groups have a similar trend in meat products purchasing with an acceptable error in margin.**
+```{r, message=FALSE, fig.width=18, fig.height=10}
+discount_per_age = Chart2_data.drop('sales_value' , axis='columns')
+
+discount_per_age.pivot(index='age', columns='product_category', values='discount_amount')
+
+(
+discount_per_age.pivot(index='age', columns='product_category', values='discount_amount')
+                .plot(kind = 'bar', figsize = (12,6) )
+                .yaxis.set_major_formatter(tick_format)
+)    
+plt.xlabel('Age Group')
+plt.ylabel('Discounts')
+plt.title('Discounts by Age Group')
+plt.legend(loc = 'upper right')
+plt.xticks(rotation=0)
+plt.show()
+```
+**Here we see the distribution of discounts for each of the selected meat products by age group. It is evident that there is a similar trend in availing discounts as it was in the total sales graph. The age group 45-54 availed the most discount on selected meat products.**
+
+***Another observation is that total amount spent on chicken discounts does not translate to the total sales of chicken. The store is providing almost equivalent or even higher amount of discounts for chicken as for beef, but, the actual chicken sales is always observed to be between 25-30% of total beef sales.***
+
+### <ins>ANALYSIS-2</ins>:
+
+We further analyzed meat sales and discounts availed on selected meat products to identify any seasonal trends.<br>
+For this analysis, we have grouped the chartl data by month and product_category in order to find its total sales value and discount amount and store the result in chart3 data dataframe.
+
+```{r, message=FALSE, fig.width=18, fig.height=10}
+Chart3_data = (
+chart1_data.groupby(['product_category','month'], as_index = False)
+           .agg({'sales_value':'sum','discount_amount':'sum'})
+           .sort_values(by = 'month')
+)    
+Chart3_data.head(5)
+
+sales_per_age_month = Chart3_data.drop('discount_amount' , axis='columns')
+
+month = [1,2,3,4,5,6,7,8,9,10,11,12]
+cal_month = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+
+sales_per_age_month.pivot(index='month', columns='product_category', values='sales_value')
+
+(
+sales_per_age_month.pivot(index='month', columns='product_category', values='sales_value')
+                   .plot(kind = 'line', figsize  = (15,6), marker = 'o', markerfacecolor = 'grey')
+                   .yaxis.set_major_formatter(tick_format)
+)    
+plt.xlabel('Month')
+plt.ylabel('Sales')
+plt.title('Sales by Month')
+plt.legend(loc = 'upper right')
+plt.grid()
+plt.xticks(month,cal_month,rotation=0)
+plt.show()
+```
+**From the above graph, we can justify that most of meat products follow a regular trend throughout the year with one exception, i.e., Turkey which has a spike in its sales during the month of November <ins>(mainly due to Thanksgiving)</ins> where all other meat products experience a dip in sales.**
+```{r, message=FALSE, fig.width=18, fig.height=10}
+discount_per_age_month = Chart3_data.drop('sales_value' , axis='columns')
+
+discount_per_age_month.pivot(index='month', columns='product_category', values='discount_amount')
+
+(
+discount_per_age_month.pivot(index='month', columns='product_category', values='discount_amount')
+                      .plot(kind = 'line', figsize  = (15,6), marker = 'o', markerfacecolor = 'grey')
+                      .yaxis.set_major_formatter(tick_format)
+)    
+plt.xlabel('Month')
+plt.ylabel('Discounts')
+plt.title('Discount by Month')
+plt.legend(loc = 'upper right')
+plt.grid()
+plt.xticks(month,cal_month,rotation=0)
+plt.show()
+```
+**From this graph we observe that distributions availed on Beef and Chicken is the highest throughout the year. As we can see in the Thanksgiving (November) month, the spike in discounts is analogous to the sales trend and we can say that the store’s idea of promoting discounts on Turkey in the month of November seems to be working well with the masses.**
+
+***When we compare the overall sales with the discounts availed throughout the year, it can be inferred that the store has tried to promote chicken sales by providing more discounts in the months of March, May and July but the sales trend were not much responsive to it.<br> 
+The store should reduce the amount of discounts on chicken and redistribute the discount budget for Pork throughout the year and Turkey mainly in the month of November.***
+
+## <ins>Summary</ins>:
+
+The above data analysis has helped us in solving our business problem in an effective way and
+thus, the solution proposed from our analysis is as follows:-
+- ***The store should ensure good relations with vendors who provide Beef, Frozen meat as these are the highest selling selected meat products and a zero inventory for these products would result in a loss of sale.***
+- ***The store is spending high amounts in discounts to promote chicken sales which is resulting in an unsuccessful attempt as Chicken sales is always found to be about 25-30% of Beef sales for any age group***
+- ***The excess amounts being spent in terms of discounts on Chicken, can be utilized in a better way by promoting discounts on Pork throughout the year and on Turkey in the month of November, as they show great potential to contribute more towards net sales as per the trend and numbers.***
+
+## <ins>Limitations</ins>:
+
+***Since the data set has product category at a granular level rather than a generalized level we could only select a few products in the meat category as selecting all categories was causing cluttering in the visualization and there would have been anonymity in the data being produced.***
+
+
+
 
